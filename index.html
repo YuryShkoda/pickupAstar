@@ -41,6 +41,9 @@
     let scoreText
     let bombs
     let gameOver
+    let music
+    let pickupSound
+    let explosionSound
 
     function preload() {
         this.load.image('sky',        'assets/sky.png')
@@ -48,6 +51,14 @@
         this.load.image('star',       'assets/star.png')
         this.load.image('bomb',       'assets/bomb.png')
         this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 })
+
+        this.load.audio('music',       'assets/music.mp3')
+        this.load.audio('pickupSound',       'assets/pickup.mp3')
+        this.load.audio('explosionSound',       'assets/explosion.mp3')
+
+        // 1
+        this.load.image('yellow', 'http://labs.phaser.io/assets/particles/yellow.png')
+        this.load.image('red', 'http://labs.phaser.io/assets/particles/red.png')
     }
 
     function create() {
@@ -83,6 +94,18 @@
             repeat: -1
         })
 
+        // 2
+        let particlesYellow = this.add.particles('yellow')
+
+        // 3
+        let emitterYellow = particlesYellow.createEmitter({
+            speed: 50,
+            scale: { start: 0.05, end: 0 }
+        })
+
+        // 4
+        emitterYellow.startFollow(player)
+
         // player.body.setGravityY(300)
 
         this.physics.add.collider(player, platforms)
@@ -106,6 +129,8 @@
         function collectStar(player, star) {
             star.disableBody(true, true)
 
+            pickupSound.play()
+
             score += 10
             scoreText.setText(`Score: ${score}`)
 
@@ -121,6 +146,18 @@
                 bomb.setCollideWorldBounds(true)
                 bomb.setVelocity(Phaser.Math.Between(-200, 200), 20)
                 bomb.allowGravity = false
+
+                // 5
+                let particleRed = this.add.particles('red')
+
+                // 6
+                let emitterRed = particleRed.createEmitter({
+                    speed: 50,
+                    scale: { start: 0.05, end: 0 }
+                })
+
+                // 7
+                emitterRed.startFollow(bomb)
             }
         }
 
@@ -136,7 +173,26 @@
             player.anims.play('turn')
 
             gameOver = true
+
+            music.stop()
+            explosionSound.play()
         }
+
+        let musicConfig = {
+            mute: false,
+            volume: 1,
+            rate: 1,
+            detune: 0,
+            seek: 0,
+            loop: true,
+            delay: 0
+        }
+
+        music = this.sound.add('music', musicConfig)
+        pickupSound = this.sound.add('pickupSound')
+        explosionSound = this.sound.add('explosionSound')
+
+        music.play()
     }
 
     function update() {
