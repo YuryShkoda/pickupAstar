@@ -44,6 +44,11 @@
     let music
     let pickupSound
     let explosionSound
+    // 1
+    let acceleration
+    let accelerationText
+    let accelerationStarAvailable = false
+    let particlesYellow
 
     function preload() {
         this.load.image('sky',        'assets/sky.png')
@@ -56,7 +61,6 @@
         this.load.audio('pickupSound',       'assets/pickup.mp3')
         this.load.audio('explosionSound',       'assets/explosion.mp3')
 
-        // 1
         this.load.image('yellow', 'https://labs.phaser.io/assets/particles/yellow.png')
         this.load.image('red', 'https://labs.phaser.io/assets/particles/red.png')
     }
@@ -94,20 +98,6 @@
             repeat: -1
         })
 
-        // 2
-        let particlesYellow = this.add.particles('yellow')
-
-        // 3
-        let emitterYellow = particlesYellow.createEmitter({
-            speed: 50,
-            scale: { start: 0.05, end: 0 }
-        })
-
-        // 4
-        emitterYellow.startFollow(player)
-
-        // player.body.setGravityY(300)
-
         this.physics.add.collider(player, platforms)
 
         cursors = this.input.keyboard.createCursorKeys()
@@ -129,14 +119,69 @@
         function collectStar(player, star) {
             star.disableBody(true, true)
 
+            // 13
+            if (star['accelerate']) {
+                // 14
+                accelerationStarAvailable = false
+                star['emitter'].visible = false
+
+                // 14.1
+                delete star['accelerate']
+                delete star['emitter']
+
+                acceleration = true
+
+                // 15
+                let emitter = createEmitter(particlesYellow)
+                player['emitter'] = emitter
+
+                // 16
+                emitter.startFollow(player)
+
+                // 17
+                let timer = 3
+                
+                // 18
+                if(accelerationText) accelerationText.destroy()
+
+                // 19
+                accelerationText = this.add.text(16, 56, `Acceleration: ${timer}`, { fontSize: '24px', fill: '#000' })
+
+                // 20
+                let interval = setInterval(() => {
+                    // 28
+                    accelerationText.setText(`Acceleration: ${timer--}`)
+                    
+                    // 21
+                    if (timer == 0) {
+                        // 22
+                        stopAcceleration()
+
+                        // 27
+                        clearInterval(interval)
+                    }
+                }, 1000);
+            }
+
             pickupSound.play()
 
             score += 10
             scoreText.setText(`Score: ${score}`)
 
             if (stars.countActive() === 0) {
+                // 2 
+                let randomStar = Math.round(Math.random() * stars.children.size)
+
+                let i = 0
+
                 stars.children.iterate(function(child) {
                     child.enableBody(true, child.x, 0, true, true)
+                    
+                    // 3
+                    if (i == randomStar && !accelerationStarAvailable && !acceleration) startAcceleration(child)
+
+                    // 4
+                    i++
                 })
 
                 let x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400)
@@ -147,16 +192,10 @@
                 bomb.setVelocity(Phaser.Math.Between(-200, 200), 20)
                 bomb.allowGravity = false
 
-                // 5
                 let particleRed = this.add.particles('red')
 
-                // 6
-                let emitterRed = particleRed.createEmitter({
-                    speed: 50,
-                    scale: { start: 0.05, end: 0 }
-                })
+                let emitterRed = createEmitter(particleRed)
 
-                // 7
                 emitterRed.startFollow(bomb)
             }
         }
@@ -193,14 +232,56 @@
         explosionSound = this.sound.add('explosionSound')
 
         music.play()
+
+        // 5 
+        let startAcceleration = (whoToFollow) => {
+            // 6
+            if (particlesYellow) particlesYellow.destroy()
+
+            // 7
+            particlesYellow = this.add.particles('yellow')
+
+            // 8
+            let emitterYellow = createEmitter(particlesYellow)
+            emitterYellow.startFollow(whoToFollow)
+
+            // 11
+            whoToFollow['accelerate'] = true
+            whoToFollow['emitter'] = emitterYellow
+
+            // 12
+            accelerationStarAvailable = true
+        }
+    }
+
+    // 9
+    function createEmitter(particles) {
+        // 10
+        let emitter = particles.createEmitter({
+            speed: 50,
+            scale: { start: 0.05, end: 0 }
+        })
+
+        return emitter
+    }
+
+    // 24
+    function stopAcceleration() {
+        // 25
+        accelerationText.destroy()
+        particlesYellow.destroy()
+        // 26
+        acceleration = false
     }
 
     function update() {
         if (cursors.left.isDown) {
-            player.setVelocityX(-160)
+            // 14.2
+            player.setVelocityX(-160 * (acceleration ? 1.5 : 1))
             player.anims.play('left', true)
         } else if (cursors.right.isDown) {
-            player.setVelocityX(160)
+            // 14.3
+            player.setVelocityX(160 * (acceleration ? 1.5 : 1))
             player.anims.play('right', true)
         } else {
             player.setVelocityX(0)
